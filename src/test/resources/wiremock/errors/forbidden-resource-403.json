@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": 2009,
+    "message": "API key does not have access to the resource. Please check pricing page for what is allowed in your API subscription plan."
+  }
+}
