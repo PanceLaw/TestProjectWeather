@@ -1,7 +1,7 @@
 package ru.qa.weather.model;
 
-public record WeatherResponse(
+public record CurrentResponse(
         Location location,
-        CurrentWeather current
+        Current current
 ) {
 }

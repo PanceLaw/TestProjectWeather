@@ -2,7 +2,7 @@ package ru.qa.weather.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public record CurrentWeather(
+public record Current(
         @JsonProperty("temp_c") double tempC,
         Condition condition,
         @JsonProperty("wind_kph") double windKph,

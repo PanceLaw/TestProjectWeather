@@ -1,6 +1,6 @@
 package ru.qa.weather.model;
 
-public record WeatherError(
+public record ApiError(
         int code,
         String message
 ) {

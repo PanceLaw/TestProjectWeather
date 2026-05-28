@@ -1,10 +1,10 @@
-Feature: Kontraktnye proverki WeatherAPI cherez WireMock
+Feature: Контрактные проверки WeatherAPI через WireMock
 
-  Scenario Outline: Uspeshno poluchaem tekushchuyu pogodu po gorodu
-    Given Mok dlya goroda "<city>" otdaet otvet iz faila "<fixture>"
-    When Klient zaprashivaet pogodu po gorodu "<city>"
-    Then Status otveta 200
-    And Pogoda v otvete sovpadaet s ozhidaemoy
+  Scenario Outline: Успешно получаем текущую погоду по городу
+    Given Мок для города "<city>" отдает ответ из файла "<fixture>"
+    When Клиент запрашивает погоду по городу "<city>"
+    Then Статус ответа 200
+    And Погода в ответе совпадает с ожидаемой
       | location.name            | <name>           |
       | location.country         | <country>        |
       | location.tz_id           | <tzId>           |
@@ -24,11 +24,11 @@ Feature: Kontraktnye proverki WeatherAPI cherez WireMock
       | Tokyo    | tokyo.json     | Tokyo    | Japan                    | Asia/Tokyo       | 21.4  | Partly cloudy | 1003          | 5.8     | 88       | 75    | 21.4       | 0.0 |
       | New York | new-york.json  | New York | United States of America | America/New_York | 25.3  | Sunny         | 1000          | 9.4     | 32       | 0     | 26.1       | 6.8 |
 
-  Scenario Outline: Poluchaem oshibku na nekorrektnyy zapros
-    Given Mok dlya puti "<path>" s parametrami "<query>" otdaet oshibku <status> iz faila "<fixture>"
-    When Klient delaet GET zapros v "<path>" s parametrami "<query>"
-    Then Status otveta <status>
-    And Oshibka v otvete sovpadaet s ozhidaemoy
+  Scenario Outline: Получаем ошибку на некорректный запрос
+    Given Мок для пути "<path>" с параметрами "<query>" отдает ошибку <status> из файла "<fixture>"
+    When Клиент выполняет GET-запрос в "<path>" с параметрами "<query>"
+    Then Статус ответа <status>
+    And Ошибка в ответе совпадает с ожидаемой
       | error.code    | <code>    |
       | error.message | <message> |
 

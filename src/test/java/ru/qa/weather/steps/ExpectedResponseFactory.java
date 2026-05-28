@@ -1,18 +1,18 @@
 package ru.qa.weather.steps;
 
 import ru.qa.weather.model.Condition;
-import ru.qa.weather.model.CurrentWeather;
+import ru.qa.weather.model.Current;
 import ru.qa.weather.model.Location;
-import ru.qa.weather.model.WeatherResponse;
+import ru.qa.weather.model.CurrentResponse;
 
 import java.util.Map;
 
-final class ExpectedWeatherFactory {
-    private ExpectedWeatherFactory() {
+final class ExpectedResponseFactory {
+    private ExpectedResponseFactory() {
     }
 
-    static WeatherResponse from(Map<String, String> expected) {
-        return new WeatherResponse(location(expected), currentWeather(expected));
+    static CurrentResponse from(Map<String, String> expected) {
+        return new CurrentResponse(location(expected), current(expected));
     }
 
     private static Location location(Map<String, String> expected) {
@@ -23,8 +23,8 @@ final class ExpectedWeatherFactory {
         );
     }
 
-    private static CurrentWeather currentWeather(Map<String, String> expected) {
-        return new CurrentWeather(
+    private static Current current(Map<String, String> expected) {
+        return new Current(
                 doubleValue(expected, "current.temp_c"),
                 new Condition(
                         expected.get("current.condition.text"),

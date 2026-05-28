@@ -8,20 +8,18 @@ import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import io.qameta.allure.Allure;
-import ru.qa.weather.client.WeatherApiClient;
-import ru.qa.weather.client.WeatherApiHttpResponse;
-import ru.qa.weather.compare.WeatherComparator;
-import ru.qa.weather.compare.WeatherFieldDifference;
-import ru.qa.weather.exception.WeatherApiException;
-import ru.qa.weather.model.WeatherErrorResponse;
-import ru.qa.weather.model.WeatherResponse;
-import ru.qa.weather.parser.WeatherJsonParser;
+import ru.qa.weather.client.ApiClient;
+import ru.qa.weather.client.ApiResponse;
+import ru.qa.weather.compare.ResponseComparator;
+import ru.qa.weather.controller.Controller;
+import ru.qa.weather.exception.ServiceException;
+import ru.qa.weather.model.CurrentResponse;
+import ru.qa.weather.model.ErrorResponse;
+import ru.qa.weather.parser.ResponseParser;
 
 import java.io.IOException;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -33,18 +31,18 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class WeatherApiSteps {
-    private static final Logger LOGGER = Logger.getLogger(WeatherApiSteps.class.getName());
+public class ApiSteps {
+    private static final Logger LOGGER = Logger.getLogger(ApiSteps.class.getName());
     private static final String API_KEY = "test-api-key";
     private static final String JSON_CONTENT_TYPE = "application/json";
 
     private static WireMockServer wireMockServer;
 
-    private final WeatherJsonParser parser = new WeatherJsonParser();
-    private final WeatherComparator comparator = new WeatherComparator();
+    private final ResponseParser parser = new ResponseParser();
+    private final ResponseComparator comparator = new ResponseComparator();
 
-    private WeatherApiClient client;
-    private WeatherApiHttpResponse response;
+    private Controller controller;
+    private ApiResponse response;
 
     @Before
     public void setUp() {
@@ -53,7 +51,7 @@ public class WeatherApiSteps {
             wireMockServer.start();
         }
         wireMockServer.resetAll();
-        client = new WeatherApiClient(wireMockServer.baseUrl(), API_KEY);
+        controller = new Controller(new ApiClient(wireMockServer.baseUrl(), API_KEY));
     }
 
     @AfterAll
@@ -64,8 +62,8 @@ public class WeatherApiSteps {
         }
     }
 
-    @Given("Mok dlya goroda {string} otdaet otvet iz faila {string}")
-    public void weatherApiReturnsCurrentWeatherForCity(String city, String fixtureName) {
+    @Given("Мок для города {string} отдает ответ из файла {string}")
+    public void mockReturnsCurrentResponseForCity(String city, String fixtureName) {
         wireMockServer.stubFor(get(urlPathEqualTo("/v1/current.json"))
                 .withQueryParam("key", equalTo(API_KEY))
                 .withQueryParam("q", equalTo(city))
@@ -76,8 +74,8 @@ public class WeatherApiSteps {
                         .withBody(readResource("wiremock/weather/" + fixtureName))));
     }
 
-    @Given("Mok dlya puti {string} s parametrami {string} otdaet oshibku {int} iz faila {string}")
-    public void weatherApiReturnsErrorFromFixture(String path, String query, int statusCode, String fixtureName) {
+    @Given("Мок для пути {string} с параметрами {string} отдает ошибку {int} из файла {string}")
+    public void mockReturnsErrorResponse(String path, String query, int statusCode, String fixtureName) {
         var mappingBuilder = get(urlPathEqualTo(path));
         queryParams(query).forEach((name, value) -> mappingBuilder.withQueryParam(name, equalTo(value)));
 
@@ -87,39 +85,39 @@ public class WeatherApiSteps {
                 .withBody(readResource("wiremock/errors/" + fixtureName))));
     }
 
-    @When("Klient zaprashivaet pogodu po gorodu {string}")
-    public void clientRequestsCurrentWeatherForCity(String city) {
-        response = client.getCurrentWeather(city);
+    @When("Клиент запрашивает погоду по городу {string}")
+    public void clientRequestsCurrentForCity(String city) {
+        response = controller.getCurrent(city);
     }
 
-    @When("Klient delaet GET zapros v {string} s parametrami {string}")
+    @When("Клиент выполняет GET-запрос в {string} с параметрами {string}")
     public void clientSendsGetRequest(String path, String query) {
-        response = client.sendGet(path, query.replace("{apiKey}", encode(API_KEY)));
+        response = controller.sendGet(path, query.replace("{apiKey}", API_KEY));
     }
 
-    @Then("Status otveta {int}")
+    @Then("Статус ответа {int}")
     public void responseStatusIs(int expectedStatusCode) {
         assertEquals(expectedStatusCode, response.statusCode());
     }
 
-    @Then("Pogoda v otvete sovpadaet s ozhidaemoy")
-    public void currentWeatherEquals(DataTable dataTable) {
-        WeatherResponse actual = parser.parseWeather(response.body());
-        WeatherResponse expected = ExpectedWeatherFactory.from(dataTable.asMap());
+    @Then("Погода в ответе совпадает с ожидаемой")
+    public void currentResponseEquals(DataTable dataTable) {
+        CurrentResponse actual = parser.parseCurrent(response.body());
+        CurrentResponse expected = ExpectedResponseFactory.from(dataTable.asMap());
 
-        List<WeatherFieldDifference> differences = comparator.compare(expected, actual);
-        String comparisonLog = comparator.buildLog(expected, actual);
+        ResponseComparator.ComparisonResult comparison = comparator.compare(expected, actual);
+        String comparisonLog = comparison.log();
 
         LOGGER.info(System.lineSeparator() + comparisonLog);
         Allure.addAttachment("weather-comparison", "text/plain", comparisonLog);
 
-        assertTrue(differences.isEmpty(), "Polya pogody otlichayutsya:%n%s".formatted(comparisonLog));
+        assertTrue(!comparison.hasDifferences(), "Current response fields differ:%n%s".formatted(comparisonLog));
     }
 
-    @Then("Oshibka v otvete sovpadaet s ozhidaemoy")
+    @Then("Ошибка в ответе совпадает с ожидаемой")
     public void errorResponseEquals(DataTable dataTable) {
         Map<String, String> expected = dataTable.asMap();
-        WeatherErrorResponse actual = parser.parseError(response.body());
+        ErrorResponse actual = parser.parseError(response.body());
 
         String comparisonLog = """
                 error.code: expected=%s, actual=%s
@@ -137,18 +135,14 @@ public class WeatherApiSteps {
     }
 
     private static String readResource(String resourcePath) {
-        try (var inputStream = WeatherApiSteps.class.getClassLoader().getResourceAsStream(resourcePath)) {
+        try (var inputStream = ApiSteps.class.getClassLoader().getResourceAsStream(resourcePath)) {
             if (inputStream == null) {
-                throw new WeatherApiException("Resurs ne nayden: " + resourcePath);
+                throw new ServiceException("Resource not found: " + resourcePath);
             }
             return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
         } catch (IOException e) {
-            throw new WeatherApiException("Ne udalos prochitat resurs: " + resourcePath, e);
+            throw new ServiceException("Resource reading failed: " + resourcePath, e);
         }
-    }
-
-    private static String encode(String value) {
-        return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 
     private static Map<String, String> queryParams(String query) {

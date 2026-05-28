@@ -30,9 +30,17 @@
 
 ## Архитектура
 
-Клиент для обращения к API реализован в `WeatherApiClient`.
+Создание HTTP-клиента и хранение базовых настроек реализованы в `ApiClient`.
 
-Он использует стандартный `java.net.http.HttpClient` и умеет:
+Он хранит:
+
+- base URL;
+- API key;
+- экземпляр стандартного `java.net.http.HttpClient`.
+
+Логика выполнения запросов вынесена в `Controller`.
+
+`Controller` умеет:
 
 - запрашивать текущую погоду;
 - выполнять GET-запрос по указанному path и query-параметрам;
@@ -42,19 +50,19 @@
 
 Для успешного ответа используются:
 
-- `WeatherResponse`;
+- `CurrentResponse`;
 - `Location`;
-- `CurrentWeather`;
+- `Current`;
 - `Condition`.
 
 Для ошибочного ответа используются:
 
-- `WeatherErrorResponse`;
-- `WeatherError`.
+- `ErrorResponse`;
+- `ApiError`.
 
-JSON-ответы парсятся через `WeatherJsonParser`.
+JSON-ответы парсятся через `ResponseParser`.
 
-Сравнение ожидаемых и фактических значений выполняется в `WeatherComparator`.
+Сравнение ожидаемых и фактических значений выполняется в `ResponseComparator`.
 Результат сравнения содержит статус по каждому полю: `OK` или `DIFF`.
 
 ## Контракт WeatherAPI
@@ -152,13 +160,13 @@ src/test/resources/features/weather-api.feature
 Шаги сценариев реализованы в классе:
 
 ```text
-src/test/java/ru/qa/weather/steps/WeatherApiSteps.java
+src/test/java/ru/qa/weather/steps/ApiSteps.java
 ```
 
 Класс запуска тестов:
 
 ```text
-src/test/java/ru/qa/weather/WeatherApiWireMockContractTests.java
+src/test/java/ru/qa/weather/WireMockContractTests.java
 ```
 
 ## Allure
@@ -179,9 +187,9 @@ target/allure-results
 
 ## Исключения
 
-В проекте используется доменное runtime-исключение `WeatherApiException`.
+В проекте используется доменное runtime-исключение `ServiceException`.
 
-Сообщения исключений написаны транслитом, чтобы они стабильно отображались в консоли и логах.
+Сообщения исключений написаны на английском языке.
 
 ## Запуск
 
